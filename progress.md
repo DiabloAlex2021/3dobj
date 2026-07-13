@@ -1,0 +1,386 @@
+Original prompt: modify the code and make the 3d boot like the boot in the image
+
+- Replaced the original mug viewer with a new procedural Three.js riding-boot scene.
+- Added deterministic hooks for `render_game_to_text` and `advanceTime` so the local Playwright loop can inspect the scene.
+- Ran the file-based Playwright capture and confirmed the page renders without runtime errors; screenshots were written to `output/web-game/`.
+- Rebuilt the foot/sole construction, shaft deformation, straps, and default pose multiple times to push the procedural boots closer to the supplied reference while keeping the scene single-file.
+- Latest validation screenshot: `output/web-game/shot-1.png`.
+- Latest pass rebuilt the boot foot from anatomical sections: narrower heel, tucked arch, higher instep, broader metatarsal area, and a single tapered toe box instead of separate toe bumps.
+- Follow-up fix replaced the remaining fake toe lumps with a continuous forefoot surface, shortened the sole/forefoot, lowered the shaft connection, and darkened the sole stack so the lower boot reads as one object again.
+- Remaining gap: the procedural geometry is still not a true match for the reference photo. The next material improvement would come from replacing the handmade boot geometry with a real modeled mesh rather than continuing to tune primitives.
+- New user request: change the boots into a cup.
+- Replaced the boot-specific scene with a ceramic cup and saucer viewer in `coffee_mug_3d.html`, keeping the same orbit controls and deterministic testing hooks.
+- Next verification step is the standard file-based Playwright capture to confirm the new model renders cleanly and the text state matches the scene.
+- Validation complete: the file-based Playwright run now exits cleanly, `state-1.json` reports the ceramic cup scene, and the latest screenshot in `output/web-game/shot-1.png` shows the cup model instead of the old boots.
+- New user request: add a new object that is a pair of black leather shoes and use a menu to switch objects.
+- Added a top-right object menu to `coffee_mug_3d.html` with `Cup` and `Shoes` buttons, and made the intro copy update based on the active selection.
+- Kept the cup rig and added a second procedural object rig for a pair of black leather loafers, toggling visibility instead of rebuilding the scene.
+- Updated `render_game_to_text` so it reports `active_object` and returns either the cup payload or the shoe pair payload.
+- Validation complete for both states:
+  - Default cup run: `output/web-game-cup/shot-1.png`
+  - Shoes menu run: `output/web-game-shoes/shot-1.png`
+  - The Playwright captures exit cleanly in both cases and `state-1.json` reflects the selected object.
+- New user request: delete shoes related because the shoe shapes were not acceptable.
+- Removed the object menu, black shoes, and white sneaker code by restoring the viewer to the cup-only scene in `coffee_mug_3d.html`.
+- Validation complete: the latest file-based Playwright run exits cleanly, `output/web-game/state-1.json` now reports only the cup object, and `output/web-game/shot-1.png` shows the cup scene with no shoe-related UI or geometry remaining.
+- New user request: add book, cellphone, and monitor to the website, and make the initial object smaller.
+- Rebuilt `coffee_mug_3d.html` into a four-object viewer with a top-right menu for `Cup`, `Book`, `Cellphone`, and `Monitor`.
+- Reduced the default cup presentation by scaling the cup rig down to `0.58` so the initial object reads smaller in frame.
+- Added three new procedural objects:
+  - a closed hardcover book with separate covers, page block, spine, and ribbon
+  - a cellphone with a visible front screen and simple UI blocks
+  - a desktop monitor with a stand and visible on-screen panels
+- Updated `render_game_to_text` so it reports `active_object` and emits object-specific state for all four options.
+- Validation complete for all four states:
+  - Cup: `output/web-game-cup/shot-1.png`
+  - Book: `output/web-game-book/shot-1.png`
+  - Cellphone: `output/web-game-cellphone/shot-1.png`
+  - Monitor: `output/web-game-monitor/shot-1.png`
+  - The Playwright captures exit cleanly for each state and the corresponding `state-1.json` files match the selected object.
+- New user request: add a human foot.
+- Added a fifth menu object, `Foot`, to `coffee_mug_3d.html` and wired it into the same intro-panel and `render_game_to_text` switching flow as the other objects.
+- Added a procedural bare foot object group with heel, upper foot volume, ankle stump, toe cluster, and nail details.
+- Validation complete for the directly affected states:
+  - Default cup run: `output/web-game-cup/shot-1.png`
+  - Foot menu run: `output/web-game-foot/shot-1.png`
+  - `output/web-game-foot/state-1.json` reports `active_object: "foot"` and the new foot payload.
+- New user request: the web is freezing.
+- Reduced render cost in `coffee_mug_3d.html` by:
+  - switching the viewer from an always-running animation loop to on-demand rendering, with continuous frames only while auto-rotate or camera easing is active
+  - lowering the renderer pixel-ratio cap and shadow-map resolution
+  - disabling physically correct lights
+  - reducing geometry segment counts on the cup, phone, monitor, foot, and floor glow
+- First validation run exposed two runtime issues introduced during the optimization pass:
+  - `TypeError: upperShape.scale is not a function`
+  - `ReferenceError: Cannot access 'autoRotate' before initialization`
+- Follow-up fix replaced the invalid `Shape.scale(...)` call with geometry scaling for the foot upper and delayed startup rendering until the viewer state is fully initialized.
+- Validation complete after the fix:
+  - Default viewer run: `output/web-game/shot-1.png`
+  - Foot menu run: `output/web-game-foot/shot-1.png`
+  - `output/web-game/state-1.json` reports `active_object: "cup"`
+  - `output/web-game-foot/state-1.json` reports `active_object: "foot"`
+  - No new Playwright error artifact was produced on the successful rerun; the only `errors-0.json` files are from the failed intermediate run at 17:42.
+- New user request: remove the foot object.
+- Removed the foot menu button, foot scene group, foot-specific materials, the entire `createFootRig()` implementation, and the foot branch from `render_game_to_text`.
+- The viewer now exposes only `cup`, `book`, `cellphone`, and `monitor` in both the UI and `available_objects`.
+- Validation complete after removal:
+  - Default viewer run: `output/web-game/shot-1.png`
+  - Monitor menu run: `output/web-game-monitor/shot-1.png`
+  - `output/web-game/state-1.json` reports `available_objects: ["cup","book","cellphone","monitor"]`
+  - `output/web-game-monitor/state-1.json` reports `active_object: "monitor"`
+- New user request: add a dark mode switch.
+- Added a theme section to the top-right menu in `coffee_mug_3d.html` with `Light` and `Dark` buttons.
+- Wired theme switching into both layers of the viewer:
+  - CSS variables now change the page background, panels, buttons, captions, and text colors.
+  - Three.js theme application now changes the scene background/fog, floor shadow/glow, tone-mapping exposure, and light intensities/colors.
+- Updated `render_game_to_text` to report `theme` and `available_themes`.
+- Validation complete for both theme states:
+  - Default light run: `output/web-game/shot-1.png`
+  - Dark-mode run: `output/web-game-dark/shot-1.png`
+  - `output/web-game/state-1.json` reports `theme: "light"`
+  - `output/web-game-dark/state-1.json` reports `theme: "dark"`
+  - The only `errors-0.json` currently present in `output/web-game/` is the stale file from the earlier failed freeze-fix iteration at 17:42; no new error artifact was produced for the theme validation run.
+- New user request: make dark mode the default.
+- Changed the initial DOM theme, default active theme state, and initial theme button classes so the viewer now loads directly into dark mode without a light-mode flash.
+- Validation complete after the default change:
+  - Default run: `output/web-game/shot-1.png`
+  - Light-toggle run: `output/web-game-light/shot-1.png`
+  - `output/web-game/state-1.json` reports `theme: "dark"`
+  - `output/web-game-light/state-1.json` reports `theme: "light"`
+- New user request: match the initial zoom/angle more closely to the provided reference framing.
+- Updated the default cup camera orbit values in `coffee_mug_3d.html` to a higher and farther starting view:
+  - `theta: 0.22`
+  - `phi: 0.32`
+  - `radius: 8.9`
+- Validation complete after the framing adjustment:
+  - Default run: `output/web-game/shot-1.png`
+  - `output/web-game/state-1.json` reports the new camera values with `theme: "dark"`
+- New user request: make each object react to user interaction.
+- Added per-object reactive behavior in `coffee_mug_3d.html`:
+  - Cup: rotating the view now stirs/sloshes the coffee surface and highlight; tapping the cup also adds a stir impulse.
+  - Book: tapping toggles the hardcover open/closed with an animated hinged cover.
+  - Cellphone: tapping crossfades between a home screen and a call-style screen layout.
+  - Monitor: tapping switches between the original dashboard and a focus presentation layout.
+- Added click/tap interaction support on the canvas with raycasting plus forgiving screen-space fallback targets, and added an `Interact` row to the controls panel.
+- Updated `render_game_to_text` to report the new interactive state for each object:
+  - cup `coffee_state` and `coffee_tilt`
+  - book `open_state` and `cover_angle`
+  - cellphone `screen_mode`
+  - monitor `layout_mode`
+- Validation complete for the new reactions:
+  - Cup rotation reaction: `output/web-game-cup-react/shot-0.png` and `state-0.json` report `coffee_state: "swirling"`
+  - Book tap reaction: `output/web-game-book-react/shot-0.png` and `state-0.json` report `open_state: "open"`
+  - Cellphone tap reaction: `output/web-game-cellphone-react/shot-0.png` and `state-0.json` report `screen_mode: "call"`
+  - Monitor tap reaction: `output/web-game-monitor-react/shot-0.png` and `state-0.json` report `layout_mode: "focus"`
+- New user request: make the book close when tapped again, fix the book hinge direction, make the monitor show matrix rain and reset on tap, and make the cellphone start FaceTime and reset on tap.
+- Updated the object reactions in `coffee_mug_3d.html`:
+  - Book now toggles open/closed on repeated taps and opens from the spine side via the corrected lid pivot direction.
+  - Cellphone now swaps between the home screen and a rendered FaceTime screen, then returns home on the next tap.
+  - Monitor now swaps between the dashboard and a live matrix-rain canvas effect, then resets to the dashboard on the next tap.
+- Strengthened the monitor effect after visual review by spawning visible rain columns immediately and increasing the trail density so the matrix state reads clearly in screenshots right after interaction.
+- Validation complete for both open and reset states:
+  - Book open: `output/web-game-book-react/shot-0.png` and `state-0.json` report `open_state: "open"` with `cover_angle: 1.35`
+  - Book reset: `output/web-game-book-reset/shot-0.png` and `state-0.json` report `open_state: "closed"`
+  - Cellphone FaceTime: `output/web-game-cellphone-react/shot-0.png` and `state-0.json` report `screen_mode: "facetime"`
+  - Cellphone reset: `output/web-game-cellphone-reset/shot-0.png` and `state-0.json` report `screen_mode: "home"`
+  - Monitor matrix: `output/web-game-monitor-react/shot-0.png` and `state-0.json` report `layout_mode: "matrix"`
+  - Monitor reset: `output/web-game-monitor-reset/shot-0.png` and `state-0.json` report `layout_mode: "dashboard"`
+- New user request: add a coffee glass filled with latte, and when the glass is active show menu selections for different coffee styles / latte art.
+- Added a new `Latte Glass` object to `coffee_mug_3d.html` with a transparent procedural glass, layered latte fill, and a canvas-driven foam surface.
+- Added a glass-only `Latte Art` menu section that appears only while the glass object is active, with `Heart`, `Rosetta`, and `Tulip` options.
+- Updated the intro copy, controls hint, active-object switching, and `render_game_to_text` so the viewer now reports the glass object and the selected `latte_art`.
+- Validation complete for the new glass states:
+  - Default glass / heart art: `output/web-game-glass-heart/shot-0.png` and `state-0.json` report `active_object: "glass"` and `latte_art: "heart"`
+  - Rosetta art: `output/web-game-glass-rosetta/shot-0.png` and `state-0.json` report `latte_art: "rosetta"`
+  - Tulip art: `output/web-game-glass-tulip/shot-0.png` and `state-0.json` report `latte_art: "tulip"`
+- New user request: add a smiley-face latte art option.
+- Added a fourth glass-only latte-art option, `Smiley`, and updated the foam renderer plus `available_latte_art` state to include it.
+- Validation complete for the new smiley art:
+  - Smiley art: `output/web-game-glass-smiley/shot-0.png` and `state-0.json` report `latte_art: "smiley"`
+- New user request: add the text `logo` to the cup and the latte glass.
+- Added a reusable logo texture helper and placed visible `logo` marks on both the cup and the glass in `coffee_mug_3d.html`.
+- Updated `render_game_to_text` so both `cup` and `glass` now report `logo_text: "logo"`.
+- Validation complete for the logo placements:
+  - Cup logo: `output/web-game-cup-logo/shot-0.png` and `state-0.json` report `logo_text: "logo"`
+  - Glass logo: `output/web-game-glass-logo/shot-0.png` and `state-0.json` report `logo_text: "logo"`
+- Follow-up user request: make the logos stick with the cup and glass surfaces.
+- Replaced the flat logo cards with curved decal geometry that follows the mug and glass walls while keeping the same `logo_text` state output.
+- Revalidated the curved logo placement in:
+  - `output/web-game-cup-logo/shot-0.png`
+  - `output/web-game-glass-logo/shot-0.png`
+- Follow-up adjustment: moved the glass logo to a true exterior wall decal and checked a steeper angle so it no longer reads like it is sitting on the latte foam.
+- Kept the cup logo on curved mug-wall geometry while tuning the mug material behavior so the mark remains readable in the default view.
+- Additional validation:
+  - Default cup decal: `output/web-game-cup-logo/shot-0.png`
+  - Default glass decal: `output/web-game-glass-logo/shot-0.png`
+  - Steeper glass-angle check: `output/web-game-glass-logo-top/shot-0.png`
+- New user request: add `Yifan Du` as the author name on each 3D object, in small bold black text.
+- Added a reusable flat-text decal helper and placed `Yifan Du` labels on all five objects:
+  - cup
+  - latte glass
+  - book cover
+  - cellphone lower bezel
+  - monitor lower bezel
+- Updated `render_game_to_text` so every object payload now includes `author_name: "Yifan Du"`.
+- Validation complete for the author labels:
+  - Cup: `output/web-game-cup-author/shot-0.png`
+  - Glass: `output/web-game-glass-author/shot-0.png`
+  - Book: `output/web-game-book-author/shot-0.png`
+  - Cellphone: `output/web-game-cellphone-author/shot-0.png`
+  - Monitor: `output/web-game-monitor-author/shot-0.png`
+- New user request: add branded company copy to the book pages.
+- Added a page-content texture for the book with:
+  - `dp programming`
+  - `AI Solutions`
+  - `One-stop solution for tech startup at every level developing from the heart, perfecting with passion Since 2020. We builds custom AI + data infrastructure for real-world businesses.`
+- Updated the book text state so `render_game_to_text` now includes `content_excerpt`.
+- Initial validation exposed the page copy sitting below the visible page layer when the book opened.
+- Moved the page-content decal onto the lifted top page surface and added polygon offset so the copy stays readable when the book is open and hidden when the book is closed.
+- Validation complete for the book content:
+  - Closed state: `output/web-game-book-copy-closed-2/shot-0.png`
+  - Open state: `output/web-game-book-copy-open-3/shot-0.png`
+  - Open state text payload: `output/web-game-book-copy-open-3/state-0.json`
+- New user request: add a clickable QR code on the book that opens `https://www.dp0.io`.
+- Added a QR code block to the book page layout, plus book copy updates telling the user to tap the QR code to visit dp0.io.
+- Added a dedicated QR tap path in the canvas interaction handler so tapping the code opens the external URL in a new tab instead of toggling the book closed.
+- Updated `render_game_to_text` for the book so it reports:
+  - `qr_url`
+  - `qr_clickable`
+  - `last_opened_url`
+- Validation complete for the QR feature:
+  - Open-book visual with QR visible: `output/web-game-book-qr-open-final/shot-0.png`
+  - QR tap success: `output/web-game-book-qr-click-final-single/shot-0.png`
+  - QR tap state: `output/web-game-book-qr-click-final-single/state-0.json` reports `last_opened_url: "https://www.dp0.io"` while the book remains open
+- New user request: make the book open angle bigger.
+- Increased the book lid open rotation and slightly increased the lifted page angle so the open state reads wider without breaking the page layout or QR placement.
+- Validation complete for the wider book opening:
+  - Open-book visual: `output/web-game-book-angle-open/shot-0.png`
+  - Open-book state: `output/web-game-book-angle-open/state-0.json` reports `cover_angle: 1.618`
+- Follow-up user request: make the book open even bigger.
+- Increased the lid rotation again and nudged the page-lift rotation so the book opens to a more dramatic angle without breaking the page or QR layout.
+- Validation complete for the larger opening:
+  - Open-book visual: `output/web-game-book-angle-open-2b/shot-0.png`
+  - Open-book state: `output/web-game-book-angle-open-2b/state-0.json` reports `cover_angle: 1.856`
+- Follow-up user request: make the book open bigger again.
+- Increased the lid rotation more aggressively so the open state pushes farther back while keeping the page and QR readable.
+- Validation complete for the larger-open state:
+  - Open-book visual: `output/web-game-book-angle-open-3b/shot-0.png`
+  - Open-book state: `output/web-game-book-angle-open-3b/state-0.json` reports `cover_angle: 2.178`
+- New user request: add a black biker leather jacket 3D object.
+- Added a new `Jacket` object to the menu and wired it into object switching, intro copy, and `render_game_to_text`.
+- Built a static black biker leather jacket rig with:
+  - black leather body
+  - wide lapels
+  - asymmetric silver zipper
+  - cropped waist belt
+  - sleeves and cuffs
+  - author label
+- First validation exposed detached/crossed sleeves, so the sleeve assembly was rebuilt around shoulder pivots and the leather material was darkened to read closer to black.
+- Validation complete for the jacket object:
+  - Jacket visual: `output/web-game-jacket-3/shot-0.png`
+  - Jacket state: `output/web-game-jacket-3/state-0.json` reports `active_object: "jacket"` with the new jacket payload
+- New user request: remove the jacket object.
+- Removed the jacket menu button, jacket scene group, jacket materials, jacket rig, jacket copy, and jacket state branch from `coffee_mug_3d.html`.
+- Validation complete after removal:
+  - Default viewer: `output/web-game-no-jacket/shot-0.png`
+  - Book object still switches correctly: `output/web-game-book-no-jacket/shot-0.png`
+  - `output/web-game-no-jacket/state-0.json` and `output/web-game-book-no-jacket/state-0.json` both report `available_objects: ["cup","glass","book","cellphone","monitor"]`
+- New user request: add a wood table, a floor lamp, and a soda can.
+- Added three new selectable showroom objects to the viewer:
+  - `Wood Table`
+  - `Floor Lamp`
+  - `Soda Can`
+- Wired the new objects into the menu, object switching, intro copy, and `render_game_to_text`.
+- Added author labels to the three new objects to keep the object set consistent with the earlier author-name change.
+- Follow-up refinement:
+  - simplified the floor lamp into a connected pole-arm-shade assembly after the first lamp pass rendered with detached parts
+  - darkened the wood and soda-can materials slightly so they read closer to wood and red aluminum under the existing lighting
+- Validation complete for the new objects:
+  - Wood table: `output/web-game-table-2/shot-0.png` and `state-0.json`
+  - Floor lamp: `output/web-game-lamp-2/shot-0.png` and `state-0.json`
+  - Soda can: `output/web-game-can-2/shot-0.png` and `state-0.json`
+- New user request: fix the floor lamp, center the soda-can label, and remove the table's redundant bottom cross.
+- Follow-up object cleanup:
+  - rebuilt the floor lamp as a cleaner upright pole-and-shade silhouette with a smaller base and subtler author mark
+  - removed the table's central lower cross and moved the stretchers out to the sides so the center stays open
+  - recentered the soda can branding on the front and curved the author text into the can body instead of using a floating tag
+- Validation complete after the cleanup pass:
+  - Floor lamp: `output/web-game-lamp-fix/shot-0.png` and `state-0.json`
+  - Wood table: `output/web-game-table-fix/shot-0.png` and `state-0.json`
+  - Soda can: `output/web-game-can-fix/shot-0.png` and `state-0.json`
+- New user request: add a slice-of-cake 3D object.
+- Added a new `Cake Slice` object to the menu and object-switching flow.
+- Built the cake as a plated layered slice with sponge, cream filling, berry frosting, a small garnish, and the existing `Yifan Du` author mark.
+- Updated `render_game_to_text` so the new object reports a `cake` payload and the object list now includes `"cake"`.
+- Validation complete for the cake object:
+  - Cake slice: `output/web-game-cake/shot-0.png`
+  - Cake slice state: `output/web-game-cake/state-0.json`
+- New user request: fix the cake floating bug and make the floor lamp toggle on/off when tapped.
+- Cake fix:
+  - lowered the slice assembly onto the plate so the cake no longer floats above the dish
+- Lamp interaction:
+  - added lamp interaction state, a switchable light/glow setup, and lamp-specific tap handling
+  - updated the lamp copy and `render_game_to_text` so the lamp reports `lit`, `light_state`, and `switchable`
+- Validation complete after the cake/lamp follow-up:
+  - Grounded cake visual: `output/web-game-cake-grounded/shot-0.png`
+  - Grounded cake state: `output/web-game-cake-grounded/state-0.json`
+  - Lamp off state via client: `output/web-game-lamp-off/shot-0.png` and `state-0.json`
+  - Lamp on state via direct browser click: `output/web-game-lamp-on-direct/shot-0.png` and `state-0.json`
+  - Lamp reset/off state via direct browser click: `output/web-game-lamp-reset-direct/shot-0.png` and `state-0.json`
+- Follow-up cake grounding correction:
+  - lowered the whole cake slice assembly again after the first grounding pass still left a visible gap above the plate
+- Revalidation after the second cake grounding pass:
+  - Updated grounded cake visual: `output/web-game-cake-grounded/shot-0.png`
+  - Updated grounded cake state: `output/web-game-cake-grounded/state-0.json`
+- New user request: fix the lamp drag regression.
+- Lamp input fix:
+  - removed the special lamp `mousedown` hijack so orbit drag works again
+  - kept lamp toggling on a normal click/tap and verified the state still flips correctly
+- Validation after the lamp drag fix:
+  - Lamp drag check: `output/web-game-lamp-drag-check/shot-0.png` and `state-0.json`
+  - Lamp on after click: `output/web-game-lamp-on-direct/shot-0.png` and `state-0.json`
+- New user request: on phone-sized screens, add one toggle that expands or collapses all UI panels.
+- Mobile UI toggle update:
+  - added a single `Collapse All` / `Expand All` pill that appears only in phone layout and hides/shows the intro, menu, and controls panels together
+  - kept desktop behavior unchanged
+  - updated `render_game_to_text` so it reports `ui.phone_layout`, `ui.panels_state`, and `ui.panels_toggle_label`
+  - added a hidden `?preview=phone` query mode plus optional `&panels=collapsed` start state to validate the mobile layout through the existing Playwright client without changing normal behavior
+- Validation after the mobile toggle update:
+  - Desktop baseline: `output/web-game-mobile-toggle-base-4/shot-0.png` and `state-0.json`
+  - Phone preview expanded: `output/web-game-phone-preview-expanded-3/shot-0.png` and `state-0.json`
+  - Phone preview collapsed: `output/web-game-phone-preview-collapsed-3/shot-0.png` and `state-0.json`
+  - Phone preview restored after toggle click: `output/web-game-phone-preview-restored-3/shot-0.png` and `state-0.json`
+- Follow-up mobile toggle refinement:
+  - replaced the visible `Expand All` / `Collapse All` copy with `+` and `-` symbols while keeping full action text in `aria-label` and `title`
+  - added `ui.panels_toggle_symbol` to `render_game_to_text`
+- Validation after the symbol refinement:
+  - Phone preview expanded with symbol toggle: `output/web-game-phone-preview-expanded-4/shot-0.png` and `state-0.json`
+  - Phone preview collapsed with symbol toggle: `output/web-game-phone-preview-collapsed-4/shot-0.png` and `state-0.json`
+  - Phone preview restored with symbol toggle: `output/web-game-phone-preview-restored-4/shot-0.png` and `state-0.json`
+- New user request: add a new red 1969 Mustang 3D object.
+- Mustang object update:
+  - added a new `1969 Mustang` menu entry and object switch branch
+  - built a display-only red fastback-style Mustang rig with long hood, sloped rear roofline, chrome trim, glass, and four wheels
+  - updated `render_game_to_text` so the new `mustang` payload reports `year`, `body_style`, `color`, `wheels`, and `author_name`
+- Validation after the Mustang addition:
+  - Desktop baseline with updated menu: `output/web-game-mustang-base/shot-0.png` and `state-0.json`
+  - Mustang view: `output/web-game-mustang-3/shot-0.png` and `state-0.json`
+- New user request: remove the Mustang.
+- Mustang removal update:
+  - removed the `1969 Mustang` menu button, Mustang materials, Mustang scene group, rig, object copy, and `render_game_to_text` branch
+  - restored the object list to the previous nine objects
+- Validation after the Mustang removal:
+  - Default viewer without Mustang: `output/web-game-no-mustang/shot-0.png` and `state-0.json`
+  - Cake object switch still works after the menu removal: `output/web-game-cake-no-mustang/shot-0.png` and `state-0.json`
+- New user request: add a Japanese-anime-style female figure with tall black leather boots.
+- Instead of procedural human geometry (previously rejected in the foot/shoes/jacket passes), added a real VRoid model: Vita (CC0 sample, VRM 0.x) is base64-embedded directly in `coffee_mug_3d.html`, keeping the page single-file (now ~19 MB).
+- Loading stack: three.js r128 (existing) + GLTFLoader 0.128 UMD + `@pixiv/three-vrm@0.6.11` UMD from CDN; the model is decoded from the embedded base64 and parsed with `GLTFLoader.parse` → `THREE_VRM.VRM.from`.
+- Figure presentation:
+  - new `Anime Figure` menu object with a white collector-style display base and the `Yifan Du` author plaque on the base front
+  - model rotated to face the camera (VRM0 faces -Z), posed from T-pose to arms-down (raw VRM0 bone space: left upper arm +z, right -z), auto-scaled to 2.3 units, feet grounded on the base
+  - tall black leather boots built the same way that worked in mochikick: her sculpted shoe meshes recolored to a glossy near-black leather material (`F00_002_01_Shoes_01_CLOTH`) plus lathe-turned leather shafts from ankle to just below the knee, positioned from the leg bone world positions (static figure, so no skinning issues)
+  - first pass rendered the shafts light brown and stovepipe-wide; fixed with a near-black base color (0x050505), lower roughness, and a slimmer calf-curved profile
+- Updated `render_game_to_text`: `available_objects` now includes `"figure"`, and the figure payload reports style, gender, boots, model name, embed source, load `status`, height, display base, and author name.
+- Validation complete via the local preview server (Browser pane, `http://localhost:8892`):
+  - figure loads with `status: "ready"`, faces the camera, arms down, black glossy boots in both dark and light themes
+  - all ten objects switch correctly and the console shows no errors
+- New user request: reshape the figure's boots to match reference photos of 3D-modeled riding boots (asymmetric swooped top edge, fitted calf, proper boot foot with rounded toe, welted sole, low stacked heel, ankle strap).
+- Replaced the simple lathe-tube-over-recolored-shoes approach with full procedural riding boots that replace Vita's platform shoes entirely (her shoe meshes are now hidden):
+  - shaft: custom parametric BufferGeometry with a calf-curved radius profile, slightly elliptical cross-section, and a riding-boot top edge that rises ~9% higher at the back (per-column height driven by a smoothed cosine falloff)
+  - foot: side-profile Shape (heel cup, instep, rounded toe box) run through the existing beveled centeredExtrude helper so the sides round off organically
+  - sole: separate thin extrusion with a toe kick-up and a stepped low heel block, in a darker matte material
+  - ankle strap: flattened torus around the shaft base with a small metal buckle on the outer side of each boot
+  - everything is positioned from the leg bone world positions (ankle y 0.259, knee y 0.837 rig-local, ground at 0.07)
+- Iterated three times against screenshots: first pass had a light-gray "platform clog" look (sole albedo too high for this scene's stacked lights — needs ~0x040404 to read black), a moon-boot-tall upper, and a bare-ankle sliver at the heel; fixed by darkening the sole, shrinking/lowering the foot profile, raising the heel cup, thinning the sole tiers, and seating the upper into the sole.
+- Validation complete via the local preview server:
+  - side, 3/4, and front views show black leather riding boots with visible toe, heel, strap, and swooped shaft top
+  - all ten objects still switch correctly and the console shows no errors
+- New user request: the reshaped boots are still not satisfying; add the original figure (without the custom boot implementation) as a separate selection.
+- Added an `Original Figure` menu object showing the untouched Vita model — her own VRoid outfit, stockings, and platform shoes, no custom boot geometry.
+- Implementation: the single embedded base64 VRM payload is now parsed twice (`loadFigureInstance` helper, second parse gets a `buffer.slice(0)` copy); both instances share the same pose/orient/scale flow and get their own collector base, and only the `Anime Figure` instance runs `addFigureBoots` (now parameterized by rig).
+- Updated `render_game_to_text`: `available_objects` includes `"vita"`, and the vita payload reports `custom_boots: false`, outfit description, load status, and author name.
+- Validation complete via the local preview server:
+  - `Original Figure` loads with `status: "ready"` and shows Vita's original stockings and platform shoes
+  - all eleven objects switch correctly and the console shows no errors
+- New user request: add a walking function to the Original Figure, managed by a menu list of different moves.
+- Added a `Moves` menu section (Stand / Walk / Wave / Bow) that appears only while the Original Figure is active, styled like the latte-art buttons via a new `.move-btn` class.
+- Animation implementation in `coffee_mug_3d.html`:
+  - the original figure's model now lives in a `vitaMover` group inside its rig, so motion can translate/rotate her without moving the display base
+  - `captureVitaBones` stores humanoid bone references and rest rotations at load
+  - `updateVitaMotion` runs in the render update chain (only while the figure is visible) and drives all moves through per-bone exponential easing toward move-specific offset targets, so switching moves blends smoothly
+  - Walk: sinusoidal gait (hip swing, knee bend, foot pitch, opposite arm swing, slight forward lean, vertical bob) while the mover carries her around a 0.42-radius circle on the base, facing the direction of travel; the render loop stays live only while a move is active, preserving the on-demand rendering design
+  - Wave: right arm raised overhead with an oscillating forearm and a small head tilt
+  - Bow: repeating forward spine bow
+  - Stand: all offsets ease back to rest and the mover glides back to the base center, turning the short way (rotation target snaps to the nearest full turn)
+- Updated `render_game_to_text` so the vita payload reports `move`, `available_moves`, `walk_angle`, and `position_on_base`.
+- Validation complete via the local preview server:
+  - walk state advances `position_on_base` and `walk_angle`, with correct forward knee bend and direction-of-travel facing in mid-stride screenshots
+  - wave and bow poses verified visually; stand returns her to base center `(0, 0)`
+  - all eleven objects still switch correctly and the console shows no errors
+- New user request: remove the wave move.
+- Removed the `Wave` button, the wave branch in `updateVitaMotion`, and the wave entry in `available_moves`; the moves menu is now Stand / Walk / Bow. The generic arm/head pose channels stay in place for future gestures.
+- Validation complete: menu shows the three remaining moves, walk still circles the base, bow still works, stand recovers, and the console shows no errors.
+- New user request: add soccer kick, clap, idle sway, and a simple dance loop, and enable moves on the boots Anime Figure too.
+- Enabled animation on the boots figure by attaching the boot meshes to her leg bones with `Object3D.attach` (shoe + sole to the foot bone, shaft + strap + buckle to the lower-leg bone — the split that worked in mochikick), so the boots now follow her legs through any move.
+- Generalized the motion system:
+  - `createFigureMotionState` gives each figure its own bones/rest/move/ease state and mover group (`figureMover` added alongside `vitaMover`)
+  - `updateVitaMotion` became `updateFigureMotion(state, dt)` and runs for both figures in the update chain
+  - one shared `Moves` menu section now appears for either figure and edits the active figure's state; each figure remembers its own move and the buttons re-sync on object switch
+- New moves (menu is now Stand / Walk / Bow / Kick / Clap / Sway / Dance):
+  - Kick: repeating soccer kick — wind-up with bent knee, fast swing-through with pointed toe, follow-through hold, recover; arms counterbalance and the support knee softens
+  - Clap: both arms raised forward with forearms oscillating together
+  - Sway: gentle idle weight-shift with counter-tilting head and a faint bob
+  - Dance: bouncy loop with alternating arm raises, spine sway, head bob, and alternating soft knees
+- Updated `render_game_to_text`: both figure payloads now report `move`, `available_moves` (7 moves), `walk_angle`, and `position_on_base`.
+- Validation complete via the local preview server:
+  - boots figure mid-walk screenshot shows both boots tracking the legs through the stride; kick screenshot shows the boot staying on the extended kicking leg
+  - dance/clap/sway verified on the original figure; per-figure move memory confirmed (figure kept `kick` while vita danced, buttons re-synced on switch)
+  - moves menu hidden for non-figure objects; all eleven objects switch correctly; no console errors
+- New user request: add a button toggle next to Auto Rotate that performs a 360 automation.
+- Added a `360 View` button beside `Auto Rotate` (both now live in a centered `.view-controls` flex wrapper; the phone-layout bottom offsets moved to the wrapper).
+- Behavior: clicking starts one smooth full 360° camera orbit from the current angle (~4 s) and the button switches itself off when the turn completes; clicking again mid-spin cancels; starting Auto Rotate or grabbing the canvas (mouse or touch) also cancels; starting the spin turns Auto Rotate off.
+- `render_game_to_text` camera payload now reports `spin_360_active` and `spin_360_remaining`.
+- Validation complete via the local preview server:
+  - a full spin advances theta by exactly 2π (6.283) and deactivates itself, button highlight included
+  - mid-spin toggle, Auto Rotate click, and canvas drag all cancel the spin correctly
+  - object switching still works and the console shows no errors
