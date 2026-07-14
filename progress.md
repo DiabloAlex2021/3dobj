@@ -218,6 +218,27 @@ Original prompt: modify the code and make the 3d boot like the boot in the image
 - First validation exposed detached/crossed sleeves, so the sleeve assembly was rebuilt around shoulder pivots and the leather material was darkened to read closer to black.
 - Validation complete for the jacket object:
   - Jacket visual: `output/web-game-jacket-3/shot-0.png`
+- New user request: add the supplied Orbital Lounge Captain USDZ figure to the object list.
+- Confirmed the pending Captain implementation is the web-converted, rigged version of the supplied textured model, with a dedicated list entry and walking, running, quick-walk, and kick controls.
+- Fixed the Captain's initial orientation so it faces the gallery camera and repaired `render_game_to_text` serialization for the 360-view remaining time.
+- Validation complete for the Captain entry:
+  - Clean front-facing presentation: `output/web-game-captain-present/shot-0.png`
+  - Run control validation: `output/web-game-captain-final/shot-0.png`
+  - Both runs report `status: "ready"`; the run-control state reports `move: "running"`, and neither run produced a console-error artifact.
+- New user request: add the supplied `Nocturne of Steel` USDZ figure to the object list.
+- Converted the 48 MB textured USDZ into a 1.9 MB embedded GLB with base-color, normal, and packed metallic/roughness textures sized for the web viewer.
+- Added the `Nocturne of Steel` menu entry, figure group, display base, loading state, gallery copy, visibility switching, and `render_game_to_text` payload.
+- Validation complete for the new figure:
+  - Visual: `output/web-game-nocturne/shot-0.png`
+  - State reports `active_object: "nocturne"`, `status: "ready"`, and `height_units: 2.3`.
+  - No console-error artifact was produced.
+- Follow-up user request: remove `Nocturne of Steel` and add `captain.usdz` as a separate static Captain without animation.
+- Removed the Nocturne menu entry, model payload, scene group, loader, config, visibility branch, and text-state branch.
+- Converted `captain.usdz` into a web-optimized static GLB, corrected the USD-to-glTF texture-coordinate orientation, and added it as the view-only `Captain` entry while preserving the separate animated `Orbital Lounge Captain` entry.
+- Validation complete for the static Captain:
+  - Visual: `output/web-game-captain-static/shot-0.png`
+  - State reports `active_object: "captainStatic"`, `status: "ready"`, `animated: false`, and `height_units: 2.3`.
+  - The move controls are hidden for this entry and no console-error artifact was produced.
   - Jacket state: `output/web-game-jacket-3/state-0.json` reports `active_object: "jacket"` with the new jacket payload
 - New user request: remove the jacket object.
 - Removed the jacket menu button, jacket scene group, jacket materials, jacket rig, jacket copy, and jacket state branch from `coffee_mug_3d.html`.
@@ -400,3 +421,17 @@ Original prompt: modify the code and make the 3d boot like the boot in the image
 - Learned from the Gale debugging saga to set `metallicFactor: 0.05, roughnessFactor: 0.75` directly in the exported material (rather than defaulting to `metallic=1`, which renders solid black under this scene's lighting with no environment map) — avoided that whole failure mode from the start.
 - Added as a new sibling static object following the exact Gale Vow Belt pattern: new menu button, group/rig/base, embedded base64 GLB (`midnightGlbData` placeholder), loader (`initMidnight`), object config, visibility switch, and `render_game_to_text` payload. Final embedded GLB ~15.2MB (mesh is denser than Gale's, plus the extra emissive texture).
 - Validation complete via the local preview server: loads with no console errors in both themes, correct textures/lighting/glow, all thirteen gallery objects switch correctly.
+- New user request: add "Orbital Lounge Captain", a rigged and animated Meshy AI biped with 4 clips (Walking, Running, Quick_Walk, Kick_a_Soccer_Ball) — the first successfully animated Meshy skeletal rig in this file after three prior attempts on a different rig ("Gale Vow Belt") were abandoned in earlier sessions.
+- Root cause of the earlier failures, finally identified and fixed: `THREE.Box3.setFromObject(skinnedMesh)` ignores the skinning transform entirely and only reflects raw bind-pose geometry, so using it to compute an auto-scale factor produced a ~135x scale error that made any animation explode. Fixed by computing the true rendered bounds with a hand-rolled replica of the vertex-shader skinning formula (sample vertices, apply `skinIndex`/`skinWeight` against `skeleton.boneMatrices` through `bindMatrix`/`bindMatrixInverse`, then `matrixWorld`), verified first in a throwaway probe page before touching the real viewer.
+- Source: 4 Meshy AI GLB exports (~29.6MB each). Only the Walking file has the full mesh/skin/skeleton (123,449 verts, 24-joint rig); the other 3 exist purely to donate `.animations[0]` (same node names/order, e.g. Hips, LeftUpLeg, Spine01/02, etc.), so their clips are directly cross-compatible with the Walking file's skeleton via `THREE.AnimationMixer`.
+- Size handling: embedding all 4 full 29.6MB GLBs was infeasible (~120MB added). Instead:
+  - the 3 donor animation files were stripped to clip-only GLBs with a Python (`pygltflib`) script that keeps only the node hierarchy (no mesh/skin) plus the referenced animation accessors/bufferViews/buffer — final sizes 33KB (Running), 45KB (Kick), 59KB (Quick Walk), so all 3 extra clips were embeddable at negligible cost
+  - the Walking file's single 4096x4096 PNG texture (20.4MB, the dominant cost) was downscaled to 1536x1536 and re-encoded as JPEG (243KB), rebuilding the GLB's buffer/bufferViews around it while leaving all mesh/skin/skeleton/animation data untouched; full Walking GLB dropped from 29.6MB to 9.4MB
+  - result: all 4 clips (Walking, Running, Quick Walk, Kick a Soccer Ball) were embedded, nothing was skipped
+- Material fix applied at load time (matching the known Meshy `metallicFactor=1.0/roughnessFactor=1.0` black-render issue): traverse the model and set `metalness = 0.05, roughness = 0.75` on every material.
+- Root motion: `Hips.position` tracks are stripped from every clip (the model's own Walking clip and the 3 harvested clips) before use, so looping walk/run/kick clips don't slide the character off the display base.
+- Integration follows the Gale/Midnight sibling-object pattern: `captainGroup`/`captainRig`/`captainBase` (shared `createFigureBase()` display base with the `Yifan Du` plaque), `captainState` (status/height/move/actions/mixer), `initCaptain()` loader (measures skinned bounds before any scale/rotation/position is applied, then applies scale/rotation.y=Math.PI/ground offset), `harvestClip()` helper that parses the 3 tiny donor GLBs purely to pull `gltf.animations[0]`, `setCaptainMove()` (crossfades between the 4 `AnimationAction`s), `updateCaptainMotion(dt)` wired into the main render/update loop. New `Orbital Lounge Captain` menu button, a dedicated Moves sub-menu (Walk / Run / Quick Walk / Kick) that only shows for this object, `objectConfigs` entry, `available_objects` list, and `render_game_to_text` payload branch (reports status, height, move, available_moves).
+- Validation complete via the local preview server (browser automation): all 4 actions load (`status: "ready"`, `actions: ["walking","running","quickWalk","kick"]`), the manually-computed skinned bounding box stays stable and sane (roughly y -0.4 to 1.9, i.e. ~2.3 units tall) across several seconds of continuous walking playback and after switching to the kick action — no explosion. Canvas snapshots taken via `canvas.toDataURL()` (the Browser pane's screenshot tool was unresponsive this session for an unrelated reason) confirm the character renders correctly proportioned, textured, and mid-stride/mid-kick, standing properly on the display base. Switching through all 4 moves and to/from other gallery objects (Gale, Midnight, Cup) produced no console errors.
+- Noted but NOT fixed (out of scope, pre-existing, unrelated to this change): calling `window.render_game_to_text()` throws (`spin_360_remaining: Number(spin360.remaining.toFixed(3))` — `spin360` has no `remaining` field) for every object, not just the new one. Left untouched per the standing rule against touching unrelated code; flagged here for a future fix.
+- File size: `coffee_mug_3d.html` grew from 54,358,470 bytes (~51.8MB) to 67,114,541 bytes (~64.0MB), an increase of ~12.75MB (9.4MB Walking mesh/skin/skeleton/texture GLB + ~0.14MB combined for the 3 clip-only GLBs, base64-encoded).
+- Cleanup: removed the throwaway `_probe.glb` / `_probe.html` test files used to verify the skinned-bounds fix in isolation before integrating into the real viewer.
